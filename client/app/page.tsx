@@ -1,50 +1,237 @@
-// export default function Home() {
-//   return <div className=''></div>
+// 'use client'
+
+// import { useEffect, useState } from 'react'
+// import axios from '@/util/axios'
+// import Link from 'next/link'
+// import { useRouter } from 'next/navigation'
+
+// type Job = {
+//   _id: string
+//   title: string
+//   description: string
+//   createdAt: string
+// }
+
+// export default function LandingPage() {
+//   const [jobs, setJobs] = useState<Job[]>([])
+//   const [loading, setLoading] = useState(true)
+//   const [error, setError] = useState('')
+//   const router = useRouter()
+//   const [token, setToken] = useState<string | null>(null)
+
+//   useEffect(() => {
+//     // just read token, do NOT redirect here
+//     const t = localStorage.getItem('token')
+//     setToken(t)
+//   }, [])
+
+//   const fetchJobs = async () => {
+//     try {
+//       const { data } = await axios.get('/api/jobs') // public endpoint
+//       setJobs(data.jobs)
+//     } catch (err: any) {
+//       setError(err.response?.data?.message || 'Failed to load jobs')
+//     } finally {
+//       setLoading(false)
+//     }
+//   }
+
+//   useEffect(() => {
+//     fetchJobs()
+//   }, [])
+
+//   const handleApply = () => {
+//     if (!token) {
+//       router.push('/login') // only redirect on click
+//     }
+//   }
+
+//   return (
+//     <div className='min-h-screen bg-gray-50'>
+//       <header className='bg-white shadow'>
+//         <div className='container mx-auto flex justify-between items-center py-4 px-6'>
+//           <h1 className='text-2xl font-bold text-[#1E40AF]'>TalentHub</h1>
+//           <nav className='flex items-center'>
+//             {!token ? (
+//               <>
+//                 <Link
+//                   href='/login'
+//                   className='mr-4 text-gray-700 hover:text-[#1E40AF]'
+//                 >
+//                   Login
+//                 </Link>
+//                 <Link
+//                   href='/register'
+//                   className='text-gray-700 hover:text-[#1E40AF]'
+//                 >
+//                   Register
+//                 </Link>
+//               </>
+//             ) : (
+//               <button
+//                 onClick={() => {
+//                   localStorage.removeItem('token')
+//                   window.location.href = '/'
+//                 }}
+//                 className='bg-red-500 text-white px-4 py-2 rounded'
+//               >
+//                 Logout
+//               </button>
+//             )}
+//           </nav>
+//         </div>
+//       </header>
+
+//       <section className='text-center py-20 px-6 bg-gradient-to-r from-blue-400 to-indigo-600 text-white'>
+//         <h2 className='text-4xl font-bold mb-4'>
+//           TalentHub: A Mini Job Portal
+//         </h2>
+//         <p className='mb-6 max-w-xl mx-auto'>
+//           Building a Platform for Job Seekers and Employers. Apply to jobs or
+//           post listings with ease.
+//         </p>
+//         <Link
+//           href='/'
+//           className='bg-white text-blue-600 font-semibold py-3 px-6 rounded shadow hover:bg-gray-100 transition'
+//         >
+//           View Jobs
+//         </Link>
+//       </section>
+
+//       <section className='container mx-auto py-16 px-6'>
+//         <h3 className='text-3xl font-bold text-center mb-8'>Available Jobs</h3>
+
+//         {loading && <p className='text-center'>Loading jobs...</p>}
+//         {error && <p className='text-center text-red-600'>{error}</p>}
+
+//         <div className='space-y-6'>
+//           {jobs.map((job) => (
+//             <div
+//               key={job._id}
+//               className='bg-white p-6 rounded shadow hover:shadow-lg transition flex flex-col md:flex-row md:justify-between md:items-center'
+//             >
+//               <div>
+//                 <h4 className='text-xl font-semibold mb-2'>{job.title}</h4>
+//                 <p className='text-gray-600 mb-1'>{job.description}</p>
+//               </div>
+
+//               {!token && (
+//                 <button
+//                   onClick={handleApply}
+//                   className='bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition mt-4 md:mt-0'
+//                 >
+//                   Apply
+//                 </button>
+//               )}
+//             </div>
+//           ))}
+//         </div>
+//       </section>
+
+//       <footer className='bg-white py-6 mt-16 text-center text-gray-500'>
+//         &copy; {new Date().getFullYear()} TalentHub. All rights reserved.
+//       </footer>
+//     </div>
+//   )
 // }
 
 'use client'
 
-import React from 'react'
+import { useEffect, useState } from 'react'
+import axios from '@/util/axios'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
-const jobs = [
-  {
-    id: 1,
-    title: 'Frontend Developer',
-    company: 'ABC Tech',
-    location: 'Addis Ababa',
-  },
-  {
-    id: 2,
-    title: 'Backend Developer',
-    company: 'XYZ Solutions',
-    location: 'Addis Ababa',
-  },
-  {
-    id: 3,
-    title: 'Fullstack Engineer',
-    company: 'TalentHub Inc.',
-    location: 'Remote',
-  },
-]
+type Job = {
+  _id: string
+  title: string
+  description: string
+  createdAt: string
+}
 
 export default function LandingPage() {
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [token, setToken] = useState<string | null>(null)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const router = useRouter()
+
+  useEffect(() => {
+    const t = localStorage.getItem('token')
+    setToken(t)
+
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark'
+    if (savedTheme) setTheme(savedTheme)
+  }, [])
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light'
+    setTheme(newTheme)
+    localStorage.setItem('theme', newTheme)
+  }
+
+  const fetchJobs = async () => {
+    try {
+      const { data } = await axios.get('/api/jobs')
+      setJobs(data.jobs)
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load jobs')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchJobs()
+  }, [])
+
+  const handleApply = () => {
+    if (!token) router.push('/login')
+  }
+
   return (
-    <div className='min-h-screen bg-gray-50'>
+    <div
+      className={`${
+        theme === 'dark'
+          ? 'bg-gray-900 text-gray-100'
+          : 'bg-gray-50 text-gray-900'
+      } min-h-screen transition-colors duration-300`}
+    >
       {/* Header */}
-      <header className='bg-white shadow'>
+      <header
+        className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow`}
+      >
         <div className='container mx-auto flex justify-between items-center py-4 px-6'>
-          <h1 className='text-2xl font-bold text-primary'>TalentHub</h1>
-          <nav>
-            <Link
-              href='/login'
-              className='mr-4 text-gray-700 hover:text-primary'
+          <h1 className='text-2xl font-bold text-blue-600'>TalentHub</h1>
+          <nav className='flex items-center gap-4'>
+            {!token ? (
+              <>
+                <Link href='/login' className='hover:text-blue-400'>
+                  Login
+                </Link>
+                <Link href='/register' className='hover:text-blue-400'>
+                  Register
+                </Link>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  localStorage.removeItem('token')
+                  window.location.href = '/'
+                }}
+                className='bg-red-500 text-white px-4 py-2 rounded'
+              >
+                Logout
+              </button>
+            )}
+            {/* Theme toggle button */}
+            <button
+              onClick={toggleTheme}
+              className='ml-2 px-3 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition'
             >
-              Login
-            </Link>
-            <Link href='/register' className='text-gray-700 hover:text-primary'>
-              Register
-            </Link>
+              {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+            </button>
           </nav>
         </div>
       </header>
@@ -59,50 +246,62 @@ export default function LandingPage() {
           post listings with ease.
         </p>
         <Link
-          href='/jobs'
+          href='/'
           className='bg-white text-blue-600 font-semibold py-3 px-6 rounded shadow hover:bg-gray-100 transition'
         >
           View Jobs
         </Link>
       </section>
 
-      {/* Job Listings */}
+      {/* Available Jobs */}
       <section className='container mx-auto py-16 px-6'>
         <h3 className='text-3xl font-bold text-center mb-8'>Available Jobs</h3>
-        <div className='grid md:grid-cols-3 gap-6'>
+
+        {loading && <p className='text-center'>Loading jobs...</p>}
+        {error && <p className='text-center text-red-600'>{error}</p>}
+
+        <div className='space-y-6'>
           {jobs.map((job) => (
             <div
-              key={job.id}
-              className='bg-white p-6 rounded shadow hover:shadow-lg transition'
+              key={job._id}
+              className={`${
+                theme === 'dark'
+                  ? 'bg-gray-800 hover:bg-gray-700'
+                  : 'bg-white hover:shadow-lg'
+              } p-6 rounded shadow transition flex flex-col md:flex-row md:justify-between md:items-center`}
             >
-              <h4 className='text-xl font-semibold mb-2'>{job.title}</h4>
-              <p className='text-gray-600 mb-1'>{job.company}</p>
-              <p className='text-gray-500 mb-4'>{job.location}</p>
-              <Link
-                href={`/jobs/${job.id}`}
-                className='bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition'
-              >
-                Apply
-              </Link>
+              <div>
+                <h4 className='text-xl font-semibold mb-2'>{job.title}</h4>
+                <p
+                  className={`${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                  } mb-1`}
+                >
+                  {job.description}
+                </p>
+              </div>
+
+              {!token && (
+                <button
+                  onClick={handleApply}
+                  className='bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition mt-4 md:mt-0'
+                >
+                  Apply
+                </button>
+              )}
             </div>
           ))}
         </div>
       </section>
 
-      {/* About Section */}
-      <section className='bg-gray-100 py-16 px-6'>
-        <div className='max-w-3xl mx-auto text-center'>
-          <h3 className='text-3xl font-bold mb-4'>🎯 Objective</h3>
-          <p>
-            TalentHub is designed to quickly showcase frontend, backend, and
-            database skills. Companies can post jobs, developers can apply, and
-            admins can review applications efficiently.
-          </p>
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer className='bg-white py-6 mt-16 text-center text-gray-500'>
+      <footer
+        className={`${
+          theme === 'dark'
+            ? 'bg-gray-800 text-gray-400'
+            : 'bg-white text-gray-500'
+        } py-6 mt-16 text-center`}
+      >
         &copy; {new Date().getFullYear()} TalentHub. All rights reserved.
       </footer>
     </div>

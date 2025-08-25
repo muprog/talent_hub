@@ -3,6 +3,8 @@ import User from '../models/User'
 import { sendMail } from '../utils/mailer'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import Application from '../models/Application'
+import Job from '../models/Job'
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 
 const register = async (req: Request, res: Response) => {
@@ -186,6 +188,81 @@ const verifyRegister = async (req: Request, res: Response) => {
   }
 }
 
+const createApplication = async (req: any, res: any) => {
+  try {
+    const { jobId } = req.body
+    const resumeFile = req.file?.path // multer file upload
+
+    // Prevent duplicate applications
+    const exists = await Application.findOne({ jobId, userId: req.user.id })
+    if (exists) return res.status(400).json({ message: 'Already applied' })
+
+    const application = await Application.create({
+      jobId,
+      userId: req.user.id,
+      status: 'applied',
+      resume: resumeFile,
+    })
+    res.json({ application })
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to create application' })
+  }
+}
+
+const getApplicationsByUser = async (req: any, res: any) => {
+  try {
+    const applications = await Application.find({ userId: req.user.id })
+      .populate('jobId', 'title description')
+      .sort({ createdAt: -1 })
+    res.json({ applications })
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch applications' })
+  }
+}
+
+// Optional: for employers to see all applications for a job
+const getApplicationsByJob = async (req: Request, res: Response) => {
+  try {
+    const applications = await Application.find({ jobId: req.params.jobId })
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 })
+
+    res.json({ applications })
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch applications' })
+  }
+}
+const getAllJobs = async (req: Request, res: Response) => {
+  try {
+    const jobs = await Job.find().sort({ createdAt: -1 })
+    res.json({ jobs })
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch jobs' })
+  }
+}
+const getJobs = async (req: any, res: any) => {
+  try {
+    const { search } = req.query
+    let query: any = {}
+    if (search) {
+      query.title = { $regex: search, $options: 'i' }
+    }
+    const jobs = await Job.find(query).sort({ createdAt: -1 })
+
+    // Add application count for analytics
+    const jobsWithCount = await Promise.all(
+      jobs.map(async (job) => {
+        const count = await Application.countDocuments({ jobId: job._id })
+        return { ...job.toObject(), applicationCount: count }
+      })
+    )
+
+    res.json({ jobs: jobsWithCount })
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch jobs' })
+  }
+}
+
 module.exports = {
   test,
   register,
@@ -194,4 +271,9 @@ module.exports = {
   forgotPassword,
   resetPassword,
   verifyRegister,
+  createApplication,
+  getApplicationsByUser,
+  getApplicationsByJob,
+  getAllJobs,
+  getJobs,
 }
