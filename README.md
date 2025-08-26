@@ -80,8 +80,6 @@ Backend: Render
 ⚙️ Installation & Setup
 
 1. Clone the Repository
-   git clone https://github.com/your-username/job-portal.git
-   cd job-portal
 
 2. Install Dependencies
    Backend
@@ -98,9 +96,6 @@ npm install
    MONGO_URI=your_mongodb_connection_string
    JWT_SECRET=your_jwt_secret
 
-Frontend .env.local
-NEXT_PUBLIC_API_URL=https://your-backend-url.onrender.com
-
 4. Run the Project Locally
    Backend
    cd server
@@ -110,7 +105,7 @@ Frontend
 cd client
 npm run dev
 
-Now visit http://localhost:3000
+Now visit https://talent-hub-orcin.vercel.app
 🎉
 
 🚀 Deployment
