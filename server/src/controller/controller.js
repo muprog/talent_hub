@@ -1,0 +1,246 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const User_1 = __importDefault(require("../models/User"));
+const mailer_1 = require("../utils/mailer");
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const Application_1 = __importDefault(require("../models/Application"));
+const Job_1 = __importDefault(require("../models/Job"));
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+const register = async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+        const userExists = await User_1.default.findOne({ email });
+        if (userExists)
+            return res.status(400).json({ message: 'User already exists' });
+        const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+        const otp = generateOTP();
+        const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+        const user = await User_1.default.create({
+            name,
+            email,
+            password: hashedPassword,
+            role,
+            otp,
+            otpExpiry,
+        });
+        await (0, mailer_1.sendMail)(email, 'TalentHub OTP Verification', `Your OTP is: ${otp}`);
+        res
+            .status(201)
+            .json({ message: 'User registered, please verify OTP', userId: user._id });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+const test = async (req, res) => {
+    await res.send('Hello');
+};
+const verifyOtp = async (req, res) => {
+    try {
+        const { userId, otp } = req.body;
+        const user = await User_1.default.findById(userId);
+        if (!user)
+            return res.status(400).json({ message: 'User not found' });
+        if (!user.otp || !user.otpExpiry)
+            return res.status(400).json({ message: 'No OTP generated' });
+        if (user.otp !== otp)
+            return res.status(400).json({ message: 'Invalid OTP' });
+        if (user.otpExpiry < new Date())
+            return res.status(400).json({ message: 'OTP expired' });
+        // Mark user as verified
+        user.isVerified = true;
+        user.otp = undefined;
+        user.otpExpiry = undefined;
+        await user.save();
+        res.json({ message: 'OTP verified successfully' });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User_1.default.findOne({ email });
+        if (!user)
+            return res.status(400).json({ message: 'Invalid credentials' });
+        if (!user.isVerified)
+            return res.status(403).json({ message: 'Please verify your email first' });
+        const isMatch = await bcryptjs_1.default.compare(password, user.password);
+        if (!isMatch)
+            return res.status(400).json({ message: 'Invalid credentials' });
+        const token = jsonwebtoken_1.default.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        res.json({ token, user });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User_1.default.findOne({ email });
+        if (!user)
+            return res.status(400).json({ message: 'User not found' });
+        const otp = generateOTP(); // 6-digit code
+        user.otp = otp;
+        user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+        user.resetAllowed = true;
+        user.resetExpiry = new Date(Date.now() + 5 * 60 * 1000);
+        await user.save();
+        await (0, mailer_1.sendMail)(email, 'TalentHub Password Reset OTP', `Your OTP is: ${otp}`);
+        res.json({
+            message: 'OTP sent to email. You can now reset password.',
+            userId: user._id,
+        });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+const resetPassword = async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+        const user = await User_1.default.findOne({ email });
+        if (!user)
+            return res.status(400).json({ message: 'User not found' });
+        // Check resetAllowed and resetExpiry instead of OTP
+        if (!user.resetAllowed ||
+            !user.resetExpiry ||
+            user.resetExpiry < new Date())
+            return res
+                .status(400)
+                .json({ message: 'You must request a password reset first' });
+        if (!newPassword || newPassword.length < 6)
+            return res
+                .status(400)
+                .json({ message: 'Password must be at least 6 characters long' });
+        user.password = await bcryptjs_1.default.hash(newPassword, 10);
+        // Clear OTP, expiry, and resetAllowed after reset
+        user.otp = undefined;
+        user.otpExpiry = undefined;
+        user.resetAllowed = false;
+        user.resetExpiry = undefined;
+        await user.save();
+        res.json({ message: 'Password reset successful' });
+    }
+    catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+const verifyRegister = async (req, res) => {
+    try {
+        const { userId, otp } = req.body;
+        const user = await User_1.default.findById(userId);
+        if (!user)
+            return res.status(400).json({ message: 'User not found' });
+        if (!user.otp || !user.otpExpiry)
+            return res.status(400).json({ message: 'No OTP generated' });
+        if (user.otpExpiry < new Date())
+            return res
+                .status(400)
+                .json({ message: 'OTP expired. Please register again.' });
+        if (user.otp !== otp)
+            return res.status(400).json({ message: 'Invalid OTP' });
+        user.isVerified = true;
+        user.otp = undefined;
+        user.otpExpiry = undefined;
+        await user.save();
+        res.json({ message: 'Email verified successfully. You can now login.' });
+    }
+    catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+const createApplication = async (req, res) => {
+    try {
+        const { jobId } = req.body;
+        const resumeFile = req.file?.path; // multer file upload
+        // Prevent duplicate applications
+        const exists = await Application_1.default.findOne({ jobId, userId: req.user.id });
+        if (exists)
+            return res.status(400).json({ message: 'Already applied' });
+        const application = await Application_1.default.create({
+            jobId,
+            userId: req.user.id,
+            status: 'applied',
+            resume: resumeFile,
+        });
+        res.json({ application });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Failed to create application' });
+    }
+};
+const getApplicationsByUser = async (req, res) => {
+    try {
+        const applications = await Application_1.default.find({ userId: req.user.id })
+            .populate('jobId', 'title description')
+            .sort({ createdAt: -1 });
+        res.json({ applications });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Failed to fetch applications' });
+    }
+};
+// Optional: for employers to see all applications for a job
+const getApplicationsByJob = async (req, res) => {
+    try {
+        const applications = await Application_1.default.find({ jobId: req.params.jobId })
+            .populate('userId', 'name email')
+            .sort({ createdAt: -1 });
+        res.json({ applications });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Failed to fetch applications' });
+    }
+};
+const getAllJobs = async (req, res) => {
+    try {
+        const jobs = await Job_1.default.find().sort({ createdAt: -1 });
+        res.json({ jobs });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Failed to fetch jobs' });
+    }
+};
+const getJobs = async (req, res) => {
+    try {
+        const { search } = req.query;
+        let query = {};
+        if (search) {
+            query.title = { $regex: search, $options: 'i' };
+        }
+        const jobs = await Job_1.default.find(query).sort({ createdAt: -1 });
+        // Add application count for analytics
+        const jobsWithCount = await Promise.all(jobs.map(async (job) => {
+            const count = await Application_1.default.countDocuments({ jobId: job._id });
+            return { ...job.toObject(), applicationCount: count };
+        }));
+        res.json({ jobs: jobsWithCount });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Failed to fetch jobs' });
+    }
+};
+module.exports = {
+    test,
+    register,
+    verifyOtp,
+    login,
+    forgotPassword,
+    resetPassword,
+    verifyRegister,
+    createApplication,
+    getApplicationsByUser,
+    getApplicationsByJob,
+    getAllJobs,
+    getJobs,
+};
+//# sourceMappingURL=controller.js.map
