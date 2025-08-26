@@ -207,8 +207,9 @@ export default function ForgotPasswordPage() {
       setTimeout(() => {
         router.push(`/verify-otp?userId=${res.data.userId}`)
       }, 1500)
-    } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Error')
+    } catch (err: unknown) {
+      setMessage('Error')
+      console.log(err)
     } finally {
       setLoading(false) // ✅ stop loading
     }

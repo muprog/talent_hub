@@ -242,8 +242,9 @@ export default function RegisterPage() {
       const res = await axios.post('/register', data)
       setMessage(res.data.message)
       router.push(`/verify-register?userId=${res.data.userId}`)
-    } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Error')
+    } catch (err: unknown) {
+      setMessage('Error')
+      console.log(err)
     } finally {
       setLoading(false) // ✅ stop loading
     }

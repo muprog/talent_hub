@@ -231,8 +231,9 @@ export default function ResetPasswordPage() {
 
       // Redirect to login after a short delay
       setTimeout(() => router.push('/login'), 1500)
-    } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Error')
+    } catch (err: unknown) {
+      setMessage('Error')
+      console.log(err)
     } finally {
       setLoading(false) // ✅ stop loading
     }

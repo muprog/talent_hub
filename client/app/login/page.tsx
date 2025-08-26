@@ -235,8 +235,9 @@ export default function LoginPage() {
       } else if (res.data.user.role === 'applicant') {
         router.push('/applicant/dashboard')
       }
-    } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Error')
+    } catch (err: unknown) {
+      setMessage('Error')
+      console.log(err)
     } finally {
       setLoading(false) // ✅ stop loading
     }
@@ -303,7 +304,7 @@ export default function LoginPage() {
               theme === 'dark' ? 'text-blue-200' : 'text-primary'
             }`}
           >
-            Don't have an account? Register
+            Don&lsquo;t have an account? Register
           </a>
         </div>
 

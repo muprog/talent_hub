@@ -214,8 +214,9 @@ export default function NewJobPage() {
       await axios.post('/employer/jobs', { title, description })
       setMessage('✅ Job created successfully!')
       setTimeout(() => router.push('/employer/dashboard'), 1200)
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Error creating job')
+    } catch (e: unknown) {
+      setError('Error creating job')
+      console.log(e)
     } finally {
       setLoading(false)
     }

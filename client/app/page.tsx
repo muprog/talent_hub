@@ -175,8 +175,9 @@ export default function LandingPage() {
     try {
       const { data } = await axios.get('/api/jobs')
       setJobs(data.jobs)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load jobs')
+    } catch (err: unknown) {
+      setError('Failed to load jobs')
+      console.log(err)
     } finally {
       setLoading(false)
     }

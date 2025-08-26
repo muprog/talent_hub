@@ -293,7 +293,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import axios from '@/util/axios'
 import useApplicantGuard from '@/hooks/useApplicantGuard'
 
@@ -332,29 +332,56 @@ export default function ApplicantDashboard() {
     if (savedTheme) setTheme(savedTheme)
   }, [])
 
-  const fetchJobs = async () => {
+  // const fetchJobs = async () => {
+  //   try {
+  //     const { data } = await axios.get('/jobs', {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     })
+  //     setJobs(data.jobs)
+  //   } catch (err: unknown) {
+  //     setError('Failed to load jobs')
+  //     console.log(err)
+  //   }
+  // }
+
+  // const fetchApplications = async () => {
+  //   try {
+  //     const { data } = await axios.get('/applications/my', {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     })
+  //     setApplications(data.applications)
+  //   } catch (err: unknown) {
+  //     setError('Failed to load applications')
+  //     console.log(err)
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
+  const fetchJobs = useCallback(async () => {
     try {
       const { data } = await axios.get('/jobs', {
         headers: { Authorization: `Bearer ${token}` },
       })
       setJobs(data.jobs)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load jobs')
+    } catch (err: unknown) {
+      setError('Failed to load jobs')
+      console.log(err)
     }
-  }
+  }, [token])
 
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
     try {
       const { data } = await axios.get('/applications/my', {
         headers: { Authorization: `Bearer ${token}` },
       })
       setApplications(data.applications)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load applications')
+    } catch (err: unknown) {
+      setError('Failed to load applications')
+      console.log(err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
 
   const isApplied = (jobId: string) =>
     applications.some((app) => app.jobId?._id === jobId)
@@ -379,8 +406,10 @@ export default function ApplicantDashboard() {
       alert('Application submitted!')
       setSelectedFile(null)
       fetchApplications()
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to apply')
+    } catch (err: unknown) {
+      // alert(err.response?.data?.message || 'Failed to apply')
+      alert('Failed to load ')
+      console.log(err)
     }
   }
 
@@ -389,7 +418,7 @@ export default function ApplicantDashboard() {
       fetchJobs()
       fetchApplications()
     }
-  }, [token])
+  }, [token, fetchJobs, fetchApplications])
 
   const filteredApplications = applications
     .filter((app) =>

@@ -196,8 +196,9 @@ export default function EmployerDashboard() {
     try {
       const { data } = await axios.get('/employer/jobs')
       setJobs(data.jobs)
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Failed to load jobs')
+    } catch (e: unknown) {
+      setError('Failed to load jobs')
+      console.log(e)
     } finally {
       setLoading(false)
     }
@@ -208,8 +209,9 @@ export default function EmployerDashboard() {
     try {
       await axios.delete(`/employer/jobs/${id}`)
       setJobs((prev) => prev.filter((j) => j._id !== id))
-    } catch (e: any) {
-      alert(e.response?.data?.message || 'Delete failed')
+    } catch (e: unknown) {
+      alert('Delete failed')
+      console.log(e)
     }
   }
 

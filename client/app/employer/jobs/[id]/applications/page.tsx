@@ -495,19 +495,6 @@ export default function JobApplicationsPage() {
     router.push('/')
   }
 
-  const load = async () => {
-    try {
-      const { data } = await axios.get(
-        `/employer/jobs/${params.id}/applications`
-      )
-      setApps(data.applications)
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Failed to load applications')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const updateStatus = async (id: string, status: string) => {
     try {
       const { data } = await axios.post(`/applications/${id}/status`, {
@@ -516,18 +503,39 @@ export default function JobApplicationsPage() {
       setApps((prev) =>
         prev.map((app) => (app._id === id ? data.application : app))
       )
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update status')
+    } catch (err: unknown) {
+      alert('Failed to update status')
+      console.log(err)
     }
   }
 
   useEffect(() => {
+    // load()
+    const load = async () => {
+      try {
+        const { data } = await axios.get(
+          `/employer/jobs/${params.id}/applications`
+        )
+        setApps(data.applications)
+      } catch (e: unknown) {
+        setError('Failed to load applications')
+        console.log(e)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     load()
-  }, [])
+  }, [params.id])
 
   const filteredApps =
     filter === 'all' ? apps : apps.filter((app) => app.status === filter)
-
+  const statuses: Array<'all' | 'shortlisted' | 'accepted' | 'rejected'> = [
+    'all',
+    'shortlisted',
+    'accepted',
+    'rejected',
+  ]
   return (
     <div
       className={
@@ -553,10 +561,10 @@ export default function JobApplicationsPage() {
 
       {/* Tabs */}
       <div className='max-w-4xl mx-auto px-4 py-4 flex gap-4 border-b'>
-        {['all', 'shortlisted', 'accepted', 'rejected'].map((status) => (
+        {statuses.map((status) => (
           <button
             key={status}
-            onClick={() => setFilter(status as any)}
+            onClick={() => setFilter(status)}
             className={`px-4 py-2 rounded-lg font-semibold transition ${
               filter === status
                 ? 'bg-blue-600 text-white'
