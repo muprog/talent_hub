@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import axios from '../../util/axios'
+import api from '../../util/axios'
 import Input from '@/components/Input'
 import Button from '@/components/Button'
+import axios, { AxiosError } from 'axios'
 
 export default function VerifyRegisterInner() {
   const searchParams = useSearchParams()
@@ -23,11 +24,17 @@ export default function VerifyRegisterInner() {
   const handleVerify = async () => {
     setLoading(true)
     try {
-      const res = await axios.post('/verify-register', { userId, otp })
+      const res = await api.post('/verify-register', { userId, otp })
       setMessage(res.data.message)
       setTimeout(() => router.push('/login'), 1500)
     } catch (err: unknown) {
-      setMessage('Error')
+      // setMessage('Error')
+      if (axios.isAxiosError(err)) {
+        const serverMsg = err.response?.data?.message
+        setMessage(serverMsg || 'Login failed. Please try again.')
+      } else {
+        setMessage('Unexpected error occurred.')
+      }
       console.log(err)
     } finally {
       setLoading(false)

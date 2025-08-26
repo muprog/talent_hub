@@ -2,10 +2,10 @@
 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import axios from '../../util/axios'
+import api from '../../util/axios'
 import Input from '@/components/Input'
 import Button from '@/components/Button'
-
+import axios, { AxiosError } from 'axios'
 export default function VerifyOtpInner() {
   const searchParams = useSearchParams()
   const userId = searchParams.get('userId') || ''
@@ -23,11 +23,17 @@ export default function VerifyOtpInner() {
   const handleVerify = async () => {
     setLoading(true)
     try {
-      const res = await axios.post('/verify-otp', { userId, otp })
+      const res = await api.post('/verify-otp', { userId, otp })
       setMessage(res.data.message)
       router.push('/reset-password')
     } catch (err: unknown) {
-      setMessage('Error')
+      // setMessage('Error')
+      if (axios.isAxiosError(err)) {
+        const serverMsg = err.response?.data?.message
+        setMessage(serverMsg || 'Login failed. Please try again.')
+      } else {
+        setMessage('Unexpected error occurred.')
+      }
       console.log(err)
     } finally {
       setLoading(false)

@@ -4,7 +4,7 @@ export interface IApplication extends Document {
   jobId: Types.ObjectId
   userId: Types.ObjectId
   status: 'applied' | 'shortlisted' | 'rejected' | 'accepted'
-  resume?: string // file path
+  resume?: string
   createdAt: Date
 }
 

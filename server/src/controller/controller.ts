@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import Application from '../models/Application'
 import Job from '../models/Job'
+import mongoose from 'mongoose'
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 
 const register = async (req: Request, res: Response) => {
@@ -17,7 +18,7 @@ const register = async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(password, 10)
     const otp = generateOTP()
-    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000) // 5 min expiry
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000)
 
     const user = await User.create({
       name,
@@ -57,7 +58,6 @@ const verifyOtp = async (req: Request, res: Response) => {
     if (user.otpExpiry < new Date())
       return res.status(400).json({ message: 'OTP expired' })
 
-    // Mark user as verified
     user.isVerified = true
     user.otp = undefined
     user.otpExpiry = undefined
@@ -101,9 +101,9 @@ const forgotPassword = async (req: Request, res: Response) => {
     const user = await User.findOne({ email })
     if (!user) return res.status(400).json({ message: 'User not found' })
 
-    const otp = generateOTP() // 6-digit code
+    const otp = generateOTP()
     user.otp = otp
-    user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+    user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000)
     user.resetAllowed = true
     user.resetExpiry = new Date(Date.now() + 5 * 60 * 1000)
     await user.save()
@@ -126,7 +126,6 @@ const resetPassword = async (req: Request, res: Response) => {
     const user = await User.findOne({ email })
     if (!user) return res.status(400).json({ message: 'User not found' })
 
-    // Check resetAllowed and resetExpiry instead of OTP
     if (
       !user.resetAllowed ||
       !user.resetExpiry ||
@@ -143,7 +142,6 @@ const resetPassword = async (req: Request, res: Response) => {
 
     user.password = await bcrypt.hash(newPassword, 10)
 
-    // Clear OTP, expiry, and resetAllowed after reset
     user.otp = undefined
     user.otpExpiry = undefined
     user.resetAllowed = false
@@ -220,7 +218,6 @@ const getApplicationsByUser = async (req: any, res: any) => {
   }
 }
 
-// Optional: for employers to see all applications for a job
 const getApplicationsByJob = async (req: Request, res: Response) => {
   try {
     const applications = await Application.find({ jobId: req.params.jobId })
@@ -262,7 +259,106 @@ const getJobs = async (req: any, res: any) => {
     res.status(500).json({ message: 'Failed to fetch jobs' })
   }
 }
+const jobsRouter = async (req: Request, res: Response) => {
+  const jobs = await Job.find()
+  res.json(jobs)
+}
+const applicationsRouter = async (req: Request, res: Response) => {
+  const apps = await Application.find()
+  res.json(apps)
+}
+const usersRouter = async (req: Request, res: Response) => {
+  const users = await User.find()
+  res.json(users)
+}
+const getEmployerJob = async (req: Request, res: Response) => {
+  try {
+    const jobs = await Job.find({ createdBy: req.user!.id }).sort({
+      createdAt: -1,
+    })
+    res.json({ jobs })
+  } catch {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+const deleteEmployerJob = async (req: Request, res: Response) => {
+  try {
+    const job = await Job.findOneAndDelete({
+      _id: req.params.id,
+      createdBy: req.user!.id,
+    })
 
+    if (!job) return res.status(404).json({ message: 'Job not found' })
+
+    await Application.updateMany({ jobId: job._id }, { $set: { jobId: null } })
+
+    res.json({ message: 'Job deleted and affected applications updated' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+const getEmployerApplication = async (req: Request, res: Response) => {
+  try {
+    const job = await Job.findOne({
+      _id: req.params.id,
+      createdBy: req.user!.id,
+    })
+    if (!job) return res.status(404).json({ message: 'Job not found' })
+    const apps = await Application.find({ jobId: job._id })
+      .populate('userId', 'name email')
+      .select('status resume userId')
+    res.json({ applications: apps })
+  } catch {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+const postEmployerJob = async (req: Request, res: Response) => {
+  try {
+    const { title, description } = req.body
+    if (!title || !description)
+      return res.status(400).json({ message: 'Title and description required' })
+    const job = await Job.create({
+      title,
+      description,
+      createdBy: new mongoose.Types.ObjectId(req.user!.id),
+    })
+    res.json({ message: 'Job created', job })
+  } catch (e) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+const getApiJob = async (_req: Request, res: Response) => {
+  try {
+    const jobs = await Job.find().sort({ createdAt: -1 })
+    res.json({ jobs })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch jobs' })
+  }
+}
+const postApplicationStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+
+    if (!['accepted', 'shortlisted', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' })
+    }
+
+    const application = await Application.findById(id)
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' })
+    }
+
+    application.status = status
+    await application.save()
+
+    return res.json({ application })
+  } catch (err: any) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+}
 module.exports = {
   test,
   register,
@@ -276,4 +372,13 @@ module.exports = {
   getApplicationsByJob,
   getAllJobs,
   getJobs,
+  jobsRouter,
+  applicationsRouter,
+  usersRouter,
+  getEmployerJob,
+  deleteEmployerJob,
+  getEmployerApplication,
+  postEmployerJob,
+  getApiJob,
+  postApplicationStatus,
 }

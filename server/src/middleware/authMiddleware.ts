@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 interface AuthUser {
   id: string
-  role: 'employer' | 'applicant' | 'admin' // whatever roles you support
+  role: 'employer' | 'applicant' | 'admin'
 }
 
 declare global {
@@ -29,7 +29,7 @@ export const authMiddleware = (
       token,
       process.env.JWT_SECRET as string
     ) as AuthUser
-    req.user = decoded // ✅ Now includes both id and role
+    req.user = decoded
     next()
   } catch (err) {
     return res.status(403).json({ message: 'Invalid token' })

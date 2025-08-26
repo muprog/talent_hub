@@ -2,7 +2,6 @@ import multer, { FileFilterCallback } from 'multer'
 import { Request } from 'express'
 import path from 'path'
 
-// Storage configuration
 const storage = multer.diskStorage({
   destination: (
     _req: Request,
@@ -16,14 +15,12 @@ const storage = multer.diskStorage({
     file: Express.Multer.File,
     cb: (error: Error | null, filename: string) => void
   ) => {
-    // Always save with timestamp + original extension
     const ext = path.extname(file.originalname).toLowerCase()
-    const uniqueName = `${Date.now()}${ext}` // e.g. 1756049507213.pdf
+    const uniqueName = `${Date.now()}${ext}`
     cb(null, uniqueName)
   },
 })
 
-// File filter
 const fileFilter = (
   _req: Request,
   file: Express.Multer.File,
@@ -36,5 +33,4 @@ const fileFilter = (
   cb(null, true)
 }
 
-// Export multer instance
 export const upload = multer({ storage, fileFilter })
